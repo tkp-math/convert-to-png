@@ -43,7 +43,7 @@ jobs:
           # ★テスト用に固定値を入れる（あとでGAS連携用に戻す）
           INPUT_FOLDER_ID: "1MQ66rEo_N5FtZg0AXR409H1yAW5RUClI"
           OUTPUT_FOLDER_ID: "1UNWio1YrDi1YTctUEhtZdaVdUqsbLG3M"
-          V_WIDTH: 3508"
+          V_WIDTH: "3508"
           H_WIDTH: "2480"
           RESIZE_FLG: "false"
         run: |
