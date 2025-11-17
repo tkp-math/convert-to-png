@@ -40,11 +40,11 @@ jobs:
 
       - name: Run PDF to PNG converter
         env:
-          # GAS から repository_dispatch で渡してもらう値たち
-          INPUT_FOLDER_ID: ${{ github.event.client_payload.input_folder_id }}
-          OUTPUT_FOLDER_ID: ${{ github.event.client_payload.output_folder_id }}
-          V_WIDTH: ${{ github.event.client_payload.v_width }}
-          H_WIDTH: ${{ github.event.client_payload.h_width }}
-          RESIZE_FLG: ${{ github.event.client_payload.resize_flg }}
+          # ★テスト用に固定値を入れる（あとでGAS連携用に戻す）
+          INPUT_FOLDER_ID: "1MQ66rEo_N5FtZg0AXR409H1yAW5RUClI"
+          OUTPUT_FOLDER_ID: "1UNWio1YrDi1YTctUEhtZdaVdUqsbLG3M"
+          V_WIDTH: 3508"
+          H_WIDTH: "2480"
+          RESIZE_FLG: "false"
         run: |
           python create_png_file.py
