@@ -19,7 +19,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'   # 必要なら 3.10 などに変更してOK
+          python-version: '3.11'
 
       - name: Install system dependencies (poppler)
         run: |
@@ -38,13 +38,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run PDF to PNG converter
+      - name: Run PDF to PNG converter and upload via GAS
         env:
-          # ★テスト用に固定値を入れる（あとでGAS連携用に戻す）
-          INPUT_FOLDER_ID: "1MQ66rEo_N5FtZg0AXR409H1yAW5RUClI"
-          OUTPUT_FOLDER_ID: "1UNWio1YrDi1YTctUEhtZdaVdUqsbLG3M"
-          V_WIDTH: "3508"
-          H_WIDTH: "2480"
-          RESIZE_FLG: "false"
+          # GAS から repository_dispatch の client_payload で渡す
+          INPUT_FOLDER_ID: ${{ github.event.client_payload.input_folder_id }}
+          OUTPUT_FOLDER_ID: ${{ github.event.client_payload.output_folder_id }}
+          V_WIDTH: ${{ github.event.client_payload.v_width }}
+          H_WIDTH: ${{ github.event.client_payload.h_width }}
+          RESIZE_FLG: ${{ github.event.client_payload.resize_flg }}
+          GAS_UPLOAD_URL: ${{ secrets.GAS_UPLOAD_URL }}          # GAS Web API のURL
+          GAS_UPLOAD_TOKEN: ${{ secrets.PNG_FILE_UPLOAD_TOKEN }} # 簡単な認証用トークン(手動作成)
         run: |
           python create_png_file.py

@@ -2,6 +2,8 @@ import os
 import io
 import datetime
 import shutil
+import base64
+import requests
 
 import cv2
 import numpy as np
@@ -10,7 +12,7 @@ from pdf2image import convert_from_path
 
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
+from googleapiclient.http import MediaIoBaseDownload
 
 
 # ================================
@@ -63,21 +65,41 @@ def download_pdf(service, file_id, dest_path):
             # print(f"Download {int(status.progress() * 100)}%.")
 
 
-def upload_png(service, local_path, new_name, parent_folder_id):
+def upload_png_via_gas(local_path, new_name, parent_folder_id):
     """
-    ローカルの PNG ファイルを Drive の指定フォルダにアップロードする。
+    ローカルの PNG ファイルを GAS Web API に送信し、
+    GAS 側で Google Drive にアップロードしてもらう。
+    parent_folder_id は GAS 側にそのまま渡す（Drive フォルダID）。
     """
-    file_metadata = {
-        "name": new_name,
-        "parents": [parent_folder_id]
+    gas_url = os.environ["GAS_UPLOAD_URL"]
+    token = os.environ["PNG_FILE_UPLOAD_TOKEN"]
+
+    # PNGファイルを読み込んで base64 エンコード
+    with open(local_path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode("utf-8")
+
+    payload = {
+        "token": token,                  # 簡易認証用トークン
+        "folderId": parent_folder_id,    # アップロード先フォルダID
+        "fileName": new_name,            # Drive 上のファイル名
+        "base64": b64,
+        "mimeType": "image/png",
     }
-    media = MediaFileUpload(local_path, mimetype="image/png")
-    file = service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields="id"
-    ).execute()
-    return file["id"]
+
+    # GAS Web API を呼び出す
+    res = requests.post(gas_url, json=payload, timeout=60)
+    res.raise_for_status()
+
+    try:
+        data = res.json()
+    except ValueError:
+        # JSON でないレスポンスの場合はそのまま表示して終了
+        print(f"GAS response (non-JSON) for {new_name}: {res.text}")
+        return None
+
+    print(f"GAS response for {new_name}: {data}")
+    # GAS 側で fileId を返している想定
+    return data.get("fileId")
 
 
 # ================================
@@ -322,7 +344,7 @@ def main():
     - 環境変数からフォルダIDや設定値を受け取る
     - DriveからPDFをダウンロード
     - QPngCreatorでPNG化
-    - PNGをDriveにアップロード
+    - PNGをGAS Web APIに送信し、GAS側でDriveにアップロード
     を一括で行う。
     """
 
@@ -365,7 +387,7 @@ def main():
 
     for file in pdf_files:
         pdf_id = file["id"]
-        pdf_name = file["name"]  # 例: "A001.pdf"
+        pdf_name = file["name"]  # 例: "Q18118281418467.pdf"
         base_name, _ = os.path.splitext(pdf_name)
 
         local_pdf_path = os.path.join(pdf_dir, pdf_name)
@@ -382,8 +404,8 @@ def main():
             print(f"Failed to convert: {pdf_name}")
             continue
 
-        # 3) 生成された PNG を Drive にアップロード
-        upload_png(service, local_png_path, f"{base_name}.png", output_folder_id)
+        # 3) 生成された PNG を GAS Web API 経由で Drive にアップロード
+        upload_png_via_gas(local_png_path, f"{base_name}.png", output_folder_id)
 
         print(f"Uploaded PNG for: {pdf_name}")
 
